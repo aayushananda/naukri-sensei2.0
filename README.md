@@ -1,6 +1,6 @@
 # 🎯 Naukri Sensei — AI Placement Prep System
 
-An end-to-end AI-powered placement preparation system built for final year students. Naukri Sensei helps you analyze your resume, match it against job descriptions, discover relevant jobs, and prepare for interviews — all powered by a production-grade GenAI backend.
+An end-to-end AI-powered placement preparation system built for final year students. Naukri Sensei helps you analyze your resume, match it against job descriptions, discover relevant jobs, and prepare for interviews — all powered by a production-grade GenAI backend and a modern React frontend.
 
 ---
 
@@ -12,7 +12,8 @@ An end-to-end AI-powered placement preparation system built for final year stude
 | **JD Matching** | Semantic matching between resume and job description using Sentence-BERT embeddings + cosine similarity |
 | **Gap Analysis** | RAG pipeline identifies missing skills and keywords between your resume and a target JD |
 | **Job Discovery** | Auto-detects your target role and fetches live job listings via JSearch API |
-| **Grammar Check** | Detects grammar errors and suggests corrections using language_tool_python |
+| **Grammar Check** | Detects grammar errors and suggests corrections using `language_tool_python` |
+| **Interactive UI** | Modern React-based SPA with premium dark mode, glassmorphism, GSAP animations, and seamless routing |
 
 ---
 
@@ -22,6 +23,16 @@ An end-to-end AI-powered placement preparation system built for final year stude
 User uploads Resume (PDF/DOCX)
         │
         ▼
+┌─────────────────┐
+│  React Frontend │  ← Vite, react-router-dom, GSAP
+└────────┬────────┘
+         │ multipart/form-data
+         ▼
+┌─────────────────┐
+│  FastAPI Backend│
+└────────┬────────┘
+         │
+         ▼
 ┌─────────────────┐
 │  resume_parser  │  ← pdfplumber / python-docx
 └────────┬────────┘
@@ -43,18 +54,15 @@ User uploads Resume (PDF/DOCX)
                            │ • RAG pipeline  │
                            │ • Gap analysis  │
                            │ • Job title ext │
-                           └────────┬────────┘
-                                    │
-                                    ▼
-                           ┌─────────────────┐
-                           │    main.py      │  ← FastAPI
-                           │  3 endpoints    │
                            └─────────────────┘
 ```
 
 ---
 
 ## 🔑 Key Design Decisions
+
+**Frontend: React + Vite + Vanilla CSS**
+A lightweight Single Page Application (SPA) architecture. Styling is achieved using Vanilla CSS and CSS variables for tokens instead of heavy frameworks, achieving a premium "Professional AI" dark theme. State is orchestrated via custom hooks, and complex data such as job matching results are cached in component state to avoid redundant network calls.
 
 **Why section-based chunking over fixed-size?**
 Resumes have inherent semantic structure — Education, Experience, Projects, Skills. Fixed-size chunking risks splitting sections mid-thought. Section-based chunking preserves complete semantic units.
@@ -64,9 +72,6 @@ LangChain abstracts the exact internals that matter for explainability. Every co
 
 **Why no Vector Database?**
 Single-resume use case processed in real-time. In-memory cosine similarity is appropriate. A vector database would be over-engineering for this scope.
-
-**Why temperature=0 for analysis?**
-Deterministic outputs — the same resume should receive the same score every time. Temperature=0.7 is used only for creative tasks like bullet point rewriting.
 
 **Why Groq over OpenAI?**
 Free tier with fast inference, identical API structure. Easy to swap to OpenAI if needed.
@@ -117,93 +122,44 @@ Resume ──► Section Chunks ──► Embed each (SBERT) ──────�
 ### `POST /analyze-resume`
 Upload a resume and get full analysis.
 
-**Input:** `file` (PDF or DOCX)
-
-**Returns:**
-```json
-{
-  "resume_text": "...",
-  "score": 88,
-  "feedback": ["..."],
-  "llm_analysis": {
-    "strengths": ["..."],
-    "weaknesses": ["..."],
-    "improvements": ["..."],
-    "shortlisting_verdict": "would shortlist",
-    "verdict_reason": "..."
-  },
-  "grammar_errors": [{"message": "...", "context": "...", "suggestions": ["..."]}]
-}
-```
-
----
-
 ### `POST /match-resume`
 Match resume against a specific job description.
-
-**Input:** `jd_text` (Form), `file` (optional) or `resume_text` (optional)
-
-**Returns:** Everything from `/analyze-resume` plus:
-```json
-{
-  "resume_match": {
-    "match_score": 73.5,
-    "most_relevant_section": "projects",
-    "relevant_text": "..."
-  },
-  "gap_in_resume": {
-    "gaps": ["..."],
-    "improvements": ["..."],
-    "suggested_keywords": ["..."]
-  }
-}
-```
-
----
 
 ### `POST /search-jobs`
 Auto-detect role from resume and find live job listings.
 
-**Input:** `resume_text` (Form)
-
-**Returns:**
-```json
-{
-  "detected_role": "AI Engineer",
-  "jobs": [{"title": "...", "company": "...", "description": "..."}]
-}
-```
+*(See backend code for detailed request/response schemas)*
 
 ---
 
 ## 🗺️ User Flow
 
 ```
-Landing Page
+Landing Page (/)
     │
     ├──► "Analyze My Resume"
     │         │
     │         ▼
-    │    /analyze-resume
+    │    /analyze
     │    score + feedback + LLM analysis
     │         │
     │         ▼
-    │    "Find Relevant Jobs?"
+    │    "Find Matching Jobs"
     │         │
     │         ▼
-    │    /search-jobs → job list
+    │    List of Jobs (Expandable)
     │         │
     │         ▼
-    │    User clicks job
+    │    User clicks "See Fit"
     │         │
     │         ▼
-    │    /match-resume → full match + gap analysis
+    │    In-line Match Panel fetches full match + gap analysis
     │
-    └──► "Have a JD? See How You Fit"
+    └──► "Match Job"
               │
               ▼
-         /match-resume (direct)
-         full match + gap analysis
+         /match (direct)
+         full match + gap analysis via Form Input
 ```
 
 ---
@@ -212,22 +168,16 @@ Landing Page
 
 ### Prerequisites
 - Python 3.10+
+- Node.js 18+ & npm
 - Groq API key (free at [console.groq.com](https://console.groq.com))
 - RapidAPI key with JSearch subscription (free tier at [rapidapi.com](https://rapidapi.com))
 
-### Installation
+### Backend Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/naukri-sensei.git
 cd naukri-sensei/backend
-
-# Create virtual environment
 python -m venv venv
-venv\Scripts\activate  # Windows
-source venv/bin/activate  # Mac/Linux
-
-# Install dependencies
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Create .env file
@@ -237,27 +187,16 @@ echo RAPIDAPI_KEY=your_rapidapi_key_here >> .env
 # Run the server
 uvicorn main:app --reload
 ```
-
-### Test the API
 Open `http://localhost:8000/docs` in your browser for interactive Swagger UI.
 
----
+### Frontend Installation
 
-## 📦 Requirements
-
+```bash
+cd naukri-sensei/frontend
+npm install
+npm run dev
 ```
-fastapi
-uvicorn
-pdfplumber
-python-docx
-python-multipart
-sentence-transformers
-numpy
-groq
-httpx
-language-tool-python
-python-dotenv
-```
+Open `http://localhost:5173` in your browser to view the app.
 
 ---
 
@@ -265,15 +204,24 @@ python-dotenv
 
 ```
 naukri-sensei/
-├── backend/
-│   ├── main.py              # FastAPI app, 3 endpoints
+├── backend/                 # FastAPI Application
+│   ├── main.py              # API routes
 │   ├── resume_parser.py     # PDF/DOCX text extraction
 │   ├── scorer.py            # Rule-based + LLM scoring
 │   ├── matcher.py           # Embeddings + cosine similarity
 │   ├── analyzer.py          # RAG gap analysis + job title extraction
 │   ├── requirements.txt
-│   └── .env                 # API keys (never commit this)
-├── frontend/                # React frontend (in progress)
+│   └── .env                 
+├── frontend/                # React Vite Application
+│   ├── src/
+│   │   ├── components/      # Reusable UI (JobCard, FileUploader, etc.)
+│   │   ├── hooks/           # Custom state managers (useResumeAnalysis, useJdMatch)
+│   │   ├── pages/           # Views (Landing, ResumeAnalysis, JdMatch)
+│   │   ├── services/        # Backend API wrappers
+│   │   ├── App.jsx          # React Router setup
+│   │   └── main.jsx         # Entry point
+│   ├── index.css            # Global design tokens and styles
+│   └── package.json
 └── README.md
 ```
 
@@ -281,15 +229,15 @@ naukri-sensei/
 
 ## 🔮 Roadmap
 
-### Phase 1 (Current)
+### Phase 1 (Completed)
 - [x] Resume parsing (PDF/DOCX)
 - [x] Hybrid resume scoring (rule-based + LLM)
 - [x] Semantic JD matching via RAG
 - [x] Live job discovery via JSearch API
-- [ ] Resume builder with LaTeX template + LLM refinement
-- [ ] Frontend (in progress)
+- [x] Frontend Implementation (React + Vite, Premium Dark Mode UI)
 
 ### Phase 2 (Upcoming)
+- [ ] Resume builder with LaTeX template + LLM refinement
 - [ ] AI mock interview with webcam-based facial confidence scoring
 - [ ] Adaptive OA generation with difficulty-calibrated questions and automated evaluation
 
@@ -305,11 +253,20 @@ naukri-sensei/
 
 ## 🧑‍💻 Built With
 
-- [FastAPI](https://fastapi.tiangolo.com/) — Backend framework
-- [Groq API](https://console.groq.com/) — LLM inference (LLaMA 3.1 8B Instant)
-- [Sentence-Transformers](https://www.sbert.net/) — Semantic embeddings (all-MiniLM-L6-v2)
-- [pdfplumber](https://github.com/jsvine/pdfplumber) — PDF text extraction
-- [JSearch API](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch) — Live job listings
+### Frontend Stack
+- **[React](https://react.dev/)** + **[Vite](https://vitejs.dev/)** — UI Framework & Build Tool
+- **[React Router](https://reactrouter.com/)** — Client-side Navigation
+- **[GSAP](https://gsap.com/)** — Micro-animations & Interactions
+- **[Lucide React](https://lucide.dev/)** — Iconography
+- **Vanilla CSS** — Custom styling with CSS Variables (No external CSS framework)
+
+### Backend Stack
+- **[FastAPI](https://fastapi.tiangolo.com/)** — Backend framework
+- **[Groq API](https://console.groq.com/)** — LLM inference (LLaMA 3.1 8B Instant)
+- **[Sentence-Transformers](https://www.sbert.net/)** — Semantic embeddings (`all-MiniLM-L6-v2`)
+- **[pdfplumber](https://github.com/jsvine/pdfplumber)** — PDF text extraction
+- **[JSearch API](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch)** — Live job listings
+- **[language_tool_python](https://pypi.org/project/language-tool-python/)** — Grammar checking
 
 ---
 
