@@ -1,0 +1,108 @@
+# 🎯 Naukri Sensei Frontend Implementation Plan
+
+As a mid-level frontend engineer given the Naukri Sensei backend, here is my detailed thought process, framework selection, and architectural plan for building a modern, highly professional frontend using strictly JavaScript.
+
+## 1. Framework Selection & Core Stack
+
+**Selection: React.js with Vite (JavaScript)**
+
+*   **Why React + Vite?** Vite provides an incredibly fast development environment. React is the industry standard for component-driven UIs. Since the requirement explicitly forbids TypeScript, I will initialize the project using the vanilla JavaScript template (`react`). 
+*   **Why not Next.js?** Since the backend is already a dedicated FastAPI server handling the heavy lifting (LLMs, RAG, File Parsing), we don't strictly need Server-Side Rendering (SSR) for SEO just yet (the app is more of a utility dashboard for logged-in users). A Single Page Application (SPA) with Vite is perfectly decoupled, lightweight, and fast.
+*   **Routing:** `react-router-dom` for seamless client-side navigation between tools.
+*   **API Communication:** native `fetch` or `axios` configured with base URLs and interceptors for centralized error handling.
+
+## 2. Design & Aesthetics Strategy
+
+To make the app look "modern, not too much, but enough to be called professional", we need to hit the sweet spot between a clean SaaS tool and a cutting-edge AI product.
+
+*   **Theme - "Professional AI":** 
+    *   **Base:** Deep dark mode (`#0B0F19`) or a very clean crisp light mode (`#FAFAFA`). I propose starting with a **Premium Dark Theme** as it naturally fits developer/student tools and makes AI features feel more "advanced".
+    *   **Accents:** Vibrant gradients (e.g., Electric Blue to Indigo) for primary actions and score indicators.
+*   **Styling Approach:** **Modern Vanilla CSS** (as per project guidelines). We will use CSS variables for tokens, standard flexbox/grid, and avoid heavy frameworks unless explicitly required. 
+*   **Visual Elements:**
+    *   **Glassmorphism:** Slight blur effects on floating cards or modals to give depth.
+    *   **Typography:** A modern sans-serif like `Inter` for data/UI elements and `Outfit` for headings.
+    *   **Micro-animations:** Smooth transitions on buttons, skeleton loaders while the AI is analyzing the resume, and a counting animation for the final "Score" display.
+
+## 3. Architecture & Project Structure
+
+I would organize the frontend into a scalable, feature-based structure:
+
+```text
+frontend/
+├── index.css (Global design tokens, resets, utility classes)
+├── src/
+│   ├── assets/       (Images, icons, fonts)
+│   ├── components/   (Reusable UI: Button, Card, FileUploader, ProgressRing)
+│   ├── layouts/      (DashboardLayout, Navbar, Sidebar)
+│   ├── pages/        (Landing, ResumeAnalysis, JdMatch, JobSearch)
+│   ├── services/     (api.js - fetch wrappers for FastAPI endpoints)
+│   ├── hooks/        (Custom React hooks like useResumeAnalysis, useJobs)
+│   ├── utils/        (Helper functions for formatting dates, text, etc.)
+│   ├── App.jsx       (React Router setup)
+│   └── main.jsx      (Vite entry point)
+```
+
+## 4. Execution Plan (Step-by-Step)
+
+### Phase 1: Foundation & Design System (Days 1)
+1. Initialize the project: `npx create-vite@latest frontend --template react`
+2. Define `index.css`: Setup all color variables, typography, and base styles.
+3. Build atomic components: `Button`, `Card`, `Header`, `Badge` (for skills).
+
+### Phase 2: Core User Flows (Days 2-3)
+1. **The Upload Flow:** Build a beautiful, drag-and-drop `FileUploader` component. It should show visual feedback when dropping a PDF/DOCX.
+2. **Analysis Dashboard (`/analyze-resume`):** 
+    *   Create a circular progress indicator for the animated `score`.
+    *   Build stylized cards separating "Strengths", "Weaknesses", and "Improvements".
+    *   Implement an expandable list for "Grammar Errors".
+3. **JD Matching (`/match-resume`):**
+    *   Create a split-pane layout: Resume details on the left, JD input form / Job suggestions on the right.
+    *   Highlight gaps visually using red/green pill badges.
+
+### Phase 3: Integration & Polish (Days 4-5)
+1. Wire up the components to the `FastAPI` backend using the `services/api.js` layer.
+2. Add loading states: Since LLM inference takes time, implement beautiful skeleton loaders or a step-by-step progress text ("Parsing PDF..." -> "Extracting Skills..." -> "Running AI Analysis...").
+3. Final responsive checks to ensure it looks professional on both mobile and laptop screens.
+
+## 5. User Review Required
+
+> [!IMPORTANT]
+> **Feedback Needed Before Execution:**
+> 1. Do you agree with using **Vite + React (JavaScript)** and **Vanilla CSS**? 
+> 2. For the visual design, I am proposing a **Premium Dark Mode** aesthetic. Are you okay with that, or do you prefer a light mode?
+> 3. Shall I go ahead and initialize the frontend code based on this plan?
+
+---
+
+# Frontend Architecture Implementation Report
+
+The frontend has been successfully implemented strictly matching the structural and architectural requirements defined.
+
+## API & Services Layer
+- Created `services/api.js` utilizing native `fetch()` and `FormData`.
+- Defined three core functions: `analyzeResume`, `searchJobs`, and `matchResume`. 
+- Implemented payload precedence in `matchResume`: ensuring `file` and `resume_text` are never sent simultaneously, fulfilling backend constraints.
+
+## Custom Hooks Split
+State orchestration has been isolated to custom hooks to decouple API calls from UI, each managing its independent `loading`, `error`, and `result` states.
+1. `useResumeAnalysis.js`: Dedicated to Phase 1 (PDF analysis).
+2. `useJobSearch.js`: Dedicated to Phase 2 (Live job fetching).
+3. `useJdMatch.js`: Dedicated to semantic match evaluation (used across inline list drops and standalone page).
+
+## Component Separation of Concerns
+- **`JobList.jsx`**: Refactored into a pure stateless-UI-manager (orchestrator). It focuses solely on tracking the `expandedJobId` and mapping over jobs, ensuring only a single card is expanded at any time without holding any core business state.
+- **`JobCard.jsx`**: Renders JD summary UI and, based on expansion state, conditionally renders the matching panel beneath it inline (avoiding destructive modals/drawers).
+- **`JdMatchPanel.jsx`**: Receives cached data or triggers load strictly underneath the job card bounds.
+
+## Chaining and Caching Mechanics
+Two sophisticated mechanics were built on the `ResumeAnalysis.jsx` page:
+1. **Strict Explicit Action Flow:** Phase 2 (Live job fetching) does NOT fire automatically upon Phase 1's conclusion, eliminating runaway network requests. It is triggered solely via an explicit "Find Matching Jobs" button.
+2. **Parent-Level Match Caching:** The caching logic (`Map<jobId, matchResult>`) and `useJdMatch` were elevated from the list components directly into `ResumeAnalysis.jsx`. This architecture protects fetched match results across toggle states. Expanding, collapsing, and re-expanding a previously scanned job will fetch the match payload directly from local component state instead of calling the server again. 
+
+## Routing
+- Established `<BrowserRouter>` structure strictly mapping:
+  - `/` -> `Landing.jsx`
+  - `/analyze` -> `ResumeAnalysis.jsx` (chains 2 modules)
+  - `/match` -> `JdMatch.jsx` (standalone match interface)
+- Used `sessionStorage('resume_text')` safely during routing transitions to initialize `/match` form states dynamically without introducing global state management bloat.

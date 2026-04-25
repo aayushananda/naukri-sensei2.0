@@ -1,0 +1,63 @@
+/* CSS Resets & Base Styles */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body, inherit);
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-base, 1.5);
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+ul {
+  list-style: none;
+}
+
+/* Custom Properties Placeholders */
+:root {
+/* Colors */
+--color-bg-base: #f0f2f5;
+--color-bg-surface: #e3e3e3;
+--color-text-primary: #333333;
+--color-text-secondary: #888888;
+--color-accent-primary: #000000;
+--color-accent-secondary: #0f0f0f;
+--color-border: #707070;
+--color-success: #3a7d5a;
+--color-danger: #d93025;
+
+/* Typography */
+--font-body: 'Inter', sans-serif;
+--font-heading: 'Inter', sans-serif;
+--line-height-base: 1.6;
+
+/* Spacing */
+--space-xs: 4px;
+--space-sm: 8px;
+--space-md: 20px;
+--space-lg: 24px;
+--space-xl: 40px;
+
+/* Effects */
+--radius-sm: 8px;
+--radius-md: 16px;
+--radius-lg: 24px;
+--shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+--shadow-md: 0 10px 40px rgba(0, 0, 0, 0.10);
+--transition-fast: 0.2s ease;
+}
